@@ -11,33 +11,36 @@ using System.Text;
 using Category = Erd_Tools.Models.Item.Category;
 using static SoulsFormats.PARAMDEF;
 using System.Collections;
-using System.Globalization;
 using System.Text.RegularExpressions;
 using SoulsFormats;
 using System.Threading.Tasks;
 using System.Threading;
-using System.Xml;
-using System.Xml.Serialization;
 using Erd_Tools.Models;
 using Erd_Tools.Models.Items;
 using Erd_Tools.Utils;
 using Erd_Tools.ErdToolsException;
+using Erd_Tools.Models.CSFD4;
+using Erd_Tools.Models.Game;
+using Erd_Tools.Models.Msg;
+using Erd_Tools.Models.System;
+using Erd_Tools.Models.System.Dlc;
 using Erd_Tools.Structs;
 using System.Runtime.InteropServices;
 using Architecture = Keystone.Architecture;
-using Grace = Erd_Tools.Models.Grace;
 
 namespace Erd_Tools
 {
     public class ErdHook : PHook, INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler? PropertyChanged;
+
         protected void OnPropertyChanged([CallerMemberName] string? name = null)
         {
             PropertyChanged?.Invoke(this, new(name));
         }
 
         public event EventHandler<PHEventArgs>? OnSetup;
+
         private void RaiseOnSetup()
         {
             OnSetup?.Invoke(this, new(this));
@@ -47,14 +50,17 @@ namespace Erd_Tools
         public PHPointer GameMan { get; set; }
         public PHPointer PlayerGameData { get; set; }
         private PHPointer PlayerInventory { get; set; }
+        private PHPointer EquipInventoryDataInventory { get; set; }
+        private PHPointer PlayerStorage { get; set; }
+        private PHPointer EquipInventoryDataStorage { get; set; }
         private PHPointer HeldNormalItemsPtr { get; set; }
         private PHPointer HeldSpecialItemsPtr { get; set; }
         private PHPointer SoloParamRepositoryPtr { get; set; }
         private PHPointer SoloParamRepository { get; set; }
         private PHPointer CapParamCall { get; set; }
         public PHPointer ItemGive { get; set; }
+        private PHPointer RemoveItemFunction { get; set; } 
         public PHPointer MapItemMan { get; set; }
-        public PHPointer EventFlagMan { get; set; }
         public PHPointer SetEventFlagFunction { get; set; }
         public PHPointer IsEventFlagFunction { get; set; }
         public PHPointer WorldChrMan { get; set; }
@@ -62,7 +68,6 @@ namespace Erd_Tools
         public PHPointer DisableOpenMap { get; set; }
         public PHPointer CombatCloseMap { get; set; }
         public PHPointer WorldAreaWeather { get; set; }
-        public PHPointer CSFD4VirtualMemoryFlag { get; set; }
         public PHPointer CSLuaEventManager { get; set; }
         public PHPointer LuaWarp_01AoB { get; set; }
         public PHPointer Crash { get; set; }
@@ -70,6 +75,11 @@ namespace Erd_Tools
         public PHPointer ChrDebug { get; set; }
         public PHPointer ChrDebugFlags { get; set; }
         public PHPointer LevelUp { get; set; }
+        public MsgRepositoryImp MsgRepository { get; private set; }
+        public PHPointer CSFD4VirtualMemoryFlagPtr { get; set; }
+        public CSFD4VirtualMemoryFlag CSFD4VirtualMemoryFlag { get; private set; }
+
+        public CSDlcImp CSDlc { get; private set; }
         public static bool Reading { get; set; }
         public string ID => Process?.Id.ToString() ?? "Not Hooked";
 
@@ -93,24 +103,35 @@ namespace Erd_Tools
             GameMan = RegisterRelativeAOB(Offsets.GameManAoB, Offsets.RelativePtrAddressOffset,
                 Offsets.RelativePtrInstructionSize, 0x0);
             PlayerGameData = CreateChildPointer(GameDataMan, (int)Offsets.GameDataMan.PlayerGameData);
+            EquipInventoryDataInventory = CreateChildPointer(PlayerGameData, Offsets.EquipInventoryDataOffset);
             PlayerInventory = CreateChildPointer(PlayerGameData, Offsets.EquipInventoryDataOffset,
-                Offsets.PlayerInventoryOffset);
-            HeldNormalItemsPtr = CreateChildPointer(PlayerGameData, 
+                (int)Offsets.EquipInventoryData.InventoryOffset);
+            
+            EquipInventoryDataStorage = CreateChildPointer(PlayerGameData, Offsets.EquipStorageDataOffset);
+            PlayerStorage = CreateChildPointer(PlayerGameData, Offsets.EquipStorageDataOffset,
+                (int)Offsets.EquipInventoryData.InventoryOffset);
+            
+            HeldNormalItemsPtr = CreateChildPointer(PlayerGameData,
                 (int)Offsets.PlayerGameData.HeldNormalItems);
             HeldSpecialItemsPtr =
                 CreateChildPointer(PlayerGameData, (int)Offsets.PlayerGameData.HeldSpecialItems);
 
-            SoloParamRepositoryPtr = RegisterRelativeAOB(Offsets.SoloParamRepositoryAoB, Offsets.RelativePtrAddressOffset,
+            SoloParamRepositoryPtr = RegisterRelativeAOB(Offsets.SoloParamRepositoryAoB,
+                Offsets.RelativePtrAddressOffset,
                 Offsets.RelativePtrInstructionSize);
             SoloParamRepository = RegisterRelativeAOB(Offsets.SoloParamRepositoryAoB, Offsets.RelativePtrAddressOffset,
                 Offsets.RelativePtrInstructionSize, 0x0);
-            
+
+            MsgRepository =
+                new MsgRepositoryImp(
+                    RegisterRelativeAOB(Offsets.MsgRepositoryImpAoB, Offsets.RelativePtrAddressOffset,
+                        Offsets.RelativePtrInstructionSize, 0x0), this);
 
             ItemGive = RegisterAbsoluteAOB(Offsets.ItemGiveAoB);
+            RemoveItemFunction = RegisterAbsoluteAOB(Offsets.RemoveItemAoB);
+            
             MapItemMan = RegisterRelativeAOB(Offsets.MapItemManAoB, Offsets.RelativePtrAddressOffset,
                 Offsets.RelativePtrInstructionSize);
-            EventFlagMan = RegisterRelativeAOB(Offsets.EventFlagManAoB, Offsets.RelativePtrAddressOffset,
-                Offsets.RelativePtrInstructionSize, 0x0);
             SetEventFlagFunction = RegisterAbsoluteAOB(Offsets.SetEventCallAoB);
             IsEventFlagFunction = RegisterAbsoluteAOB(Offsets.IsEventCallAoB);
 
@@ -125,24 +146,27 @@ namespace Erd_Tools
             WorldAreaWeather = RegisterRelativeAOB(Offsets.WorldAreaWeatherAoB, Offsets.RelativePtrAddressOffset,
                 Offsets.RelativePtrInstructionSize, 0x0);
 
-            CSFD4VirtualMemoryFlag = RegisterRelativeAOB(Offsets.CSFD4VirtualMemoryFlagAoB,
+            CSFD4VirtualMemoryFlagPtr = RegisterRelativeAOB(Offsets.CSFD4VirtualMemoryFlagAoB,
                 Offsets.RelativePtrAddressOffset, Offsets.RelativePtrInstructionSize, 0x0);
             CSLuaEventManager = RegisterRelativeAOB(Offsets.CSLuaEventManagerAoB, Offsets.RelativePtrAddressOffset,
                 Offsets.LargeRelativePtrInstructionSize);
             LuaWarp_01AoB = RegisterAbsoluteAOB(Offsets.LuaWarp_01AoB);
 
             GetChrInsFromHandle = RegisterAbsoluteAOB(Offsets.GetChrInsFromHandle);
-            
+
             ChrDebug = RegisterRelativeAOB(Offsets.GetChrInsFromHandle, Offsets.RelativePtrAddressOffset,
                 Offsets.RelativePtrInstructionSize, 0x0);
             ChrDebugFlags = RegisterRelativeAOB(Offsets.GetChrInsFromHandle, Offsets.RelativePtrAddressOffset2,
                 Offsets.RelativePtrInstructionSize, 0x0);
 
             LevelUp = RegisterAbsoluteAOB(Offsets.LevelUpAoB);
-            
+
             ItemEventDictionary = BuildItemEventDictionary();
             ItemCategory.GetItemCategories();
-            Continent.GetContinents();
+
+
+            CSDlc = new CSDlcImp(RegisterRelativeAOB(Offsets.CSDlcImpAoB, Offsets.CSDlcImpOffset,
+                Offsets.CSDlcImpInstructionSize, 0));
         }
 
         private void ErdHook_OnUnhooked(object? sender, PHEventArgs e)
@@ -158,14 +182,13 @@ namespace Erd_Tools
             IntPtr param = SoloParamRepository.Resolve();
             IntPtr itemGive = ItemGive.Resolve();
             IntPtr mapItemMan = MapItemMan.Resolve();
-            IntPtr eventFlagMan = EventFlagMan.Resolve();
+            IntPtr eventFlagMan = CSFD4VirtualMemoryFlagPtr.Resolve();
             IntPtr capParamCall = CapParamCall.Resolve();
             IntPtr worldChrMan = WorldChrMan.Resolve();
             IntPtr playeIns = PlayerIns.Resolve();
             IntPtr warp = LuaWarp_01AoB.Resolve();
             IntPtr pgd = PlayerGameData.Resolve();
             IntPtr inv = PlayerInventory.Resolve();
-            IntPtr flags = CSFD4VirtualMemoryFlag.Resolve();
             ulong paramOffset =
                 (ulong)(pParam.ToInt64() -
                         Process.MainModule.BaseAddress
@@ -174,6 +197,7 @@ namespace Erd_Tools
             IntPtr disableOpenMap = DisableOpenMap.Resolve();
             IntPtr combatCloseMap = CombatCloseMap.Resolve();
             IntPtr getChrInsFromHandle = GetChrInsFromHandle.Resolve();
+            IntPtr csDlc = CSDlc.Resolve();
 #endif
 
             await AsyncSetup();
@@ -182,11 +206,17 @@ namespace Erd_Tools
             //LogABunchOfStuff();
         }
 
+        public GestureGameData GestureGameData;
+        
         private async Task AsyncSetup()
         {
             CheckParamsLoaded();
             Params = GetParams();
             await ReadParams();
+            GestureGameData =
+                new GestureGameData(CreateChildPointer(PlayerGameData, (int)Offsets.PlayerGameData.GestureGameData),
+                    GestureParam, MsgRepository);
+            CSFD4VirtualMemoryFlag = new CSFD4VirtualMemoryFlag(CSFD4VirtualMemoryFlagPtr, this);
             Setup = true;
             RaiseOnSetup();
         }
@@ -214,11 +244,13 @@ namespace Erd_Tools
 
         private void LogABunchOfStuff()
         {
-            List<string> list = new List<string>();
-            list.Add($"WorldChrMan {WorldChrMan.Resolve():X2}");
-            list.Add($"ItemGib {ItemGive.Resolve():X2}");
-            list.Add($"GameDataMan {GameDataMan.Resolve():X2}");
-            list.Add($"SoloParamRepository {SoloParamRepository.Resolve():X2}");
+            List<string> list = new()
+            {
+                $"WorldChrMan {WorldChrMan.Resolve().ToInt64() - Process.MainModule.BaseAddress.ToInt64():X2}",
+                $"ItemGib {ItemGive.Resolve().ToInt64() - -Process.MainModule.BaseAddress.ToInt64():X2}",
+                $"GameDataMan {GameDataMan.Resolve().ToInt64() - Process.MainModule.BaseAddress.ToInt64():X2}",
+                $"SoloParamRepository {SoloParamRepository.Resolve().ToInt64() - Process.MainModule.BaseAddress.ToInt64():X2}"
+            };
             File.WriteAllLines(Environment.CurrentDirectory + @"\HookLog.txt", list);
         }
 
@@ -229,7 +261,10 @@ namespace Erd_Tools
         public Param? EquipParamWeapon;
         public Param? MagicParam;
         public Param? NpcParam;
+        public Param? BonfireWarpTabParam;
+        public Param? BonfireWarpSubCategoryParam;
         public Param? BonfireWarpParam;
+        public Param? GestureParam;
 
         private Engine Engine = new(Architecture.X86, Mode.X64);
 
@@ -243,7 +278,8 @@ namespace Erd_Tools
             if (error != KeystoneError.KS_ERR_OK)
                 throw new("Something went wrong during assembly. Code could not be assembled.");
 
-            IntPtr insertPtr = GetPrefferedIntPtr(bytes.Buffer.Length, flProtect: PropertyHook.Kernel32.PAGE_EXECUTE_READWRITE);
+            IntPtr insertPtr = GetPrefferedIntPtr(bytes.Buffer.Length,
+                flProtect: PropertyHook.Kernel32.PAGE_EXECUTE_READWRITE);
 
             //Reassemble with the location of the isertPtr to support relative instructions
             bytes = Engine.Assemble(asm, (ulong)insertPtr);
@@ -348,8 +384,17 @@ namespace Erd_Tools
                 case "NpcParam":
                     NpcParam = param;
                     break;
+                case "BonfireWarpTabParam":
+                    BonfireWarpTabParam = param;
+                    break;
+                case "BonfireWarpSubCategoryParam":
+                    BonfireWarpSubCategoryParam = param;
+                    break;
                 case "BonfireWarpParam":
                     BonfireWarpParam = param;
+                    break;
+                case "GestureParam":
+                    GestureParam = param;
                     break;
                 default:
                     break;
@@ -358,7 +403,7 @@ namespace Erd_Tools
 
         internal PHPointer GetParamPointer(int offset)
         {
-            return CreateChildPointer(SoloParamRepository, new int[] {offset, 0x80, 0x80});
+            return CreateChildPointer(SoloParamRepository, new int[] { offset, 0x80, 0x80 });
         }
 
         public void SaveParam(Param param)
@@ -378,7 +423,7 @@ namespace Erd_Tools
 
         private async Task ReadParams()
         {
-            List<Task> tasks = new List<Task>();
+            List<Task> tasks = new();
 
             foreach (ItemCategory category in ItemCategory.All)
             {
@@ -408,35 +453,23 @@ namespace Erd_Tools
         /// <summary>
         /// Sets the event flag in game by calling the "Set Event Flag" function.
         /// </summary>
-        /// <param name="flag"></param>
+        /// <param name="flag">Flag Id</param>
+        /// <param name="state">On or off</param>
+        [Obsolete("This function is deprecated. Use CSFD4VirtualMemoryFlag.SetEventFlag, instead")]
         public void SetEventFlag(int flag, bool state)
         {
-            IntPtr idPointer = GetPrefferedIntPtr(sizeof(int));
-            PropertyHook.Kernel32.WriteInt32(Handle, idPointer, flag);
-
-            string asmString = Util.GetEmbededResource("Assembly.SetEventFlag.asm");
-            string asm = string.Format(asmString, EventFlagMan.Resolve(), (state ? 1 : 0), idPointer.ToString("X2"),
-                SetEventFlagFunction.Resolve());
-            AsmExecute(asm);
-            Free(idPointer);
+            CSFD4VirtualMemoryFlag.SetEventFlag(flag, state);
         }
 
+        /// <summary>
+        /// Returns the state of the flag in game by calling the "Is Event Flag" function.
+        /// </summary>
+        /// <param name="flag">Flag Id</param>
+        /// <returns>Flag state</returns>
+        [Obsolete("This function is deprecated. Use CSFD4VirtualMemoryFlag.IsEventFlag, instead.")]
         public bool IsEventFlag(int flag)
         {
-            IntPtr returnPtr = GetPrefferedIntPtr(sizeof(bool));
-            IntPtr idPointer = GetPrefferedIntPtr(sizeof(int));
-            PropertyHook.Kernel32.WriteInt32(Handle, idPointer, flag);
-
-            string asmString = Util.GetEmbededResource("Assembly.IsEventFlag.asm");
-            string asm = string.Format(asmString, EventFlagMan.Resolve(), idPointer.ToString("X2"),
-                IsEventFlagFunction.Resolve(), returnPtr.ToString("X2"));
-
-            AsmExecute(asm);
-            bool state = PropertyHook.Kernel32.ReadBoolean(Handle, returnPtr);
-            Free(returnPtr);
-            Free(idPointer);
-
-            return state;
+            return CSFD4VirtualMemoryFlag.IsEventFlag(flag);
         }
 
         #region Inventory
@@ -616,13 +649,27 @@ namespace Erd_Tools
             }
         }
 
+        public void RemoveItem(bool storage, uint index)
+        {
+            PHPointer inventory = EquipInventoryDataInventory;
+            if (storage)
+            {
+                inventory = EquipInventoryDataStorage;
+            }
+            
+            string asmString = Util.GetEmbededResource("Assembly.RemoveItem.asm");
+            index += inventory.ReadUInt32((int)Offsets.EquipInventoryData.TailIndex);
+            string asm = string.Format(asmString, index, inventory.Resolve(), RemoveItemFunction.Resolve() + Offsets.RemoveItemOffset);
+            AsmExecute(asm);
+        }
+
         List<InventoryEntry>? Inventory;
-        public int InventoryEntries => PlayerGameData.ReadInt32((int)Offsets.PlayerGameData.InventoryCount);
+        List<InventoryEntry>? Storage;
+        public uint InventoryEntries => EquipInventoryDataInventory.ReadUInt32((int)Offsets.EquipInventoryData.InventoryCount);
+        public uint StorageEntries => EquipInventoryDataStorage.ReadUInt32((int)Offsets.EquipInventoryData.InventoryCount);
 
-        public int InventoryLength => PlayerGameData.ReadInt32((int)Offsets.PlayerGameData.MaximumNormalItems);
-        //public int LastInventoryCount => GetInventoryCount();
+        public uint InventoryLength => PlayerGameData.ReadUInt32((int)Offsets.PlayerGameData.MaximumNormalItems);
 
-        private int _inventoryLength;
 
 
         public IEnumerable GetInventory()
@@ -630,22 +677,38 @@ namespace Erd_Tools
             Inventory = GetInventoryList();
             return Inventory;
         }
+        
+        public IEnumerable GetStorage()
+        {
+            Storage = GetStorageList();
+            return Storage;
+        }
 
         private List<InventoryEntry> GetInventoryList()
         {
-            List<InventoryEntry> inventory = new();
-            uint inventoryEntries = (uint)InventoryEntries;
-            byte[] bytes = PlayerInventory.ReadBytes(0x0, (uint)InventoryLength * Offsets.PlayInventoryEntrySize);
+            byte[] bytes = PlayerInventory.ReadBytes(0x0, InventoryLength * Offsets.InventoryEntrySize);
 
+            return GetInventoryList(InventoryEntries, bytes);
+        }
+        
+        private List<InventoryEntry> GetStorageList()
+        {
+            byte[] bytes = PlayerStorage.ReadBytes(0x0, InventoryLength * Offsets.InventoryEntrySize);
+
+            return GetInventoryList(StorageEntries, bytes);
+        }
+
+        private List<InventoryEntry> GetInventoryList(uint inventoryEntries, byte[] bytes) {
+            List<InventoryEntry> inventory = new();
             for (int i = 0; inventory.Count < inventoryEntries; i++)
             {
-                byte[] entry = new byte[Offsets.PlayInventoryEntrySize];
-                Array.Copy(bytes, i * Offsets.PlayInventoryEntrySize, entry, 0, entry.Length);
+                byte[] entry = new byte[Offsets.InventoryEntrySize];
+                Array.Copy(bytes, i * Offsets.InventoryEntrySize, entry, 0, entry.Length);
 
                 if (BitConverter.ToInt32(entry, (int)Offsets.InventoryEntry.ItemID) == -1) continue;
 
-                inventory.Add(new(CreateBasePointer(PlayerInventory.Resolve() + i * Offsets.PlayInventoryEntrySize),
-                    entry, this));
+                inventory.Add(new InventoryEntry(CreateBasePointer(PlayerInventory.Resolve() + i * Offsets.InventoryEntrySize),
+                    (uint)i, entry, this));
             }
 
             return inventory;
@@ -799,7 +862,7 @@ namespace Erd_Tools
         private void EnableMapInCombat()
         {
             OriginalCombatCloseMap = CombatCloseMap.ReadBytes(0x0, 0x5);
-            byte[]? assembly = new byte[] {0x48, 0x31, 0xC0, 0x90, 0x90};
+            byte[]? assembly = new byte[] { 0x48, 0x31, 0xC0, 0x90, 0x90 };
 
             DisableOpenMap.WriteByte(0x0, 0xEB); //Write Jump
             CombatCloseMap.WriteBytes(0x0, assembly);
@@ -1107,10 +1170,10 @@ namespace Erd_Tools
             get => GameMan.ReadInt32((int)Offsets.GameMan.LastGrace);
             set => GameMan.WriteInt32((int)Offsets.GameMan.LastGrace, value);
         }
-
+        [Obsolete("This function is deprecated. Use CSFD4VirtualMemoryFlag.IsEventFlagFast, instead.")]
         public bool CheckGraceStatus(int ptrOffset, int dataOffset, int bitStart)
         {
-            PHPointer bonfireInfo = CreateChildPointer(CSFD4VirtualMemoryFlag, ptrOffset);
+            PHPointer bonfireInfo = CreateChildPointer(CSFD4VirtualMemoryFlagPtr, ptrOffset);
             byte bitfield = bonfireInfo.ReadByte(dataOffset);
             return (bitfield & (1 << bitStart)) != 0;
         }
@@ -1125,11 +1188,93 @@ namespace Erd_Tools
             AsmExecute(asm);
         }
 
+        /// <summary>
+        /// Gets the bonfire "Continents" or "Tabs". Contains all continents, hubs and graces.
+        /// </summary>
+        /// <returns></returns>
+        public List<Continent> GetContinents()
+        {
+            if (Continent.All == null)
+            {
+                Continent.All = _populateContinents();
+            }
+
+            return Continent.All;
+        }
+
+        private List<Continent> _populateContinents()
+        {
+            List<Continent> continents = new();
+            foreach (Param.Row row in BonfireWarpTabParam.Rows)
+            {
+                DlcName dlc = DlcName.None;
+                int textId = BonfireWarpTabParam.Pointer.ReadInt32(row.DataOffset + row["textId"].FieldOffset);
+                string? name = MsgRepository.GetEntry(FmgId.GR_MenuText, textId);
+                if (name == null)
+                {
+                    name = MsgRepository.GetEntry(FmgId.GR_MenuText_dlc01, textId);
+                    dlc = DlcName.ShadowOfTheErdtree;
+                }
+
+                if (name != null)
+                {
+                    continents.Add(new Continent(name, row.ID, new List<Hub>(), textId, dlc));
+                }
+            }
+
+            foreach (Param.Row row in BonfireWarpSubCategoryParam.Rows)
+            {
+                DlcName dlc = DlcName.None;
+                ushort tabId =
+                    BonfireWarpSubCategoryParam.Pointer.ReadUInt16(row.DataOffset + row["tabId"].FieldOffset);
+                int textId = BonfireWarpSubCategoryParam.Pointer.ReadInt32(row.DataOffset + row["textId"].FieldOffset);
+                string? name = MsgRepository.GetEntry(FmgId.GR_MenuText, textId);
+                if (name == null)
+                {
+                    name = MsgRepository.GetEntry(FmgId.GR_MenuText_dlc01, textId);
+                    dlc = DlcName.ShadowOfTheErdtree;
+                }
+
+                if (name != null)
+                {
+                    continents.Find((c) => c.RowId == tabId)!.Hubs
+                        .Add(new Hub(Name = name, row.ID, tabId, dlc, new()));
+                }
+            }
+
+            foreach (Param.Row row in BonfireWarpParam.Rows)
+            {
+                DlcName dlc = DlcName.None;
+                int eventFlagId =
+                    (int)BonfireWarpParam.Pointer.ReadUInt32(row.DataOffset + row["eventflagId"].FieldOffset);
+                int entityId =
+                    (int)BonfireWarpParam.Pointer.ReadUInt32(row.DataOffset + row["bonfireEntityId"].FieldOffset);
+                int subCategoryId =
+                    BonfireWarpParam.Pointer.ReadInt32(row.DataOffset + row["bonfireSubCategoryId"].FieldOffset);
+                int textId = BonfireWarpParam.Pointer.ReadInt32(row.DataOffset + row["textId1"].FieldOffset);
+                string name = MsgRepository.GetEntry(FmgId.PlaceName, textId);
+                if (name == null)
+                {
+                    name = MsgRepository.GetEntry(FmgId.PlaceName_dlc01, textId);
+                    dlc = DlcName.ShadowOfTheErdtree;
+                }
+
+                if (name == null) continue;
+                Continent continent = continents.Find((c) => c.Hubs.Find((h) => h.RowId == subCategoryId) != null);
+                Hub hub = continent.Hubs.Find((h) => h.RowId == subCategoryId);
+
+                hub.Graces.Add(new Grace(name, hub.Name, continent.Name, eventFlagId, entityId, dlc));
+            }
+
+            return continents;
+        }
+
         #endregion
 
         #region Player
 
-        public void LevelUpPlayer(int vigor, int mind, int endurance, int strength, int dexterity, int intelligence, int faith, int arcane)
+        public void LevelUpPlayer(int vigor, int mind, int endurance, int strength, int dexterity, int intelligence,
+            int faith, int arcane)
         {
             LevelUpStruct levelUpStruct = new();
             levelUpStruct.Vigor = vigor;
@@ -1140,17 +1285,17 @@ namespace Erd_Tools
             levelUpStruct.Intelligence = intelligence;
             levelUpStruct.Faith = faith;
             levelUpStruct.Arcane = arcane;
-            
+
             IntPtr buf = Marshal.AllocHGlobal(
                 Marshal.SizeOf(levelUpStruct));
             Marshal.StructureToPtr(levelUpStruct,
                 buf, false);
             string asmString = Util.GetEmbededResource("Assembly.LevelUp.asm");
             string asm = string.Format(asmString, buf.ToString("X2"), LevelUp.Resolve());
-            
+
             Marshal.FreeHGlobal(buf);
         }
-        
-  #endregion
+
+        #endregion
     }
 }
