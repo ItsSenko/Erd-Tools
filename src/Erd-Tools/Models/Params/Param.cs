@@ -120,9 +120,9 @@ namespace Erd_Tools.Models
             public Param Param { get; private set; }
             public string Name { get; private set; }
             public int ID { get; private set; }
-            public int DataOffset { get; private set; }
+            public long DataOffset { get; private set; }
 
-            public Row(Param param, string name, int id, int offset)
+            public Row(Param param, string name, int id, long offset)
             {
                 Param = param;
                 Name = $"{id} - {name}";

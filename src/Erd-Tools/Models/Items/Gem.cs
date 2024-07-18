@@ -76,5 +76,10 @@ namespace Erd_Tools.Models
 
         public static List<Infusion> AllInfusions = Enum.GetValues(typeof(Infusion)).Cast<Infusion>().ToList();
 
+        public override string ToString()
+        {
+            return Name;
+        }
+
     }
 }
