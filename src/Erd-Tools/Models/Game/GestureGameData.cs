@@ -63,7 +63,7 @@ namespace Erd_Tools.Models.Game
             _gestures = new List<Gesture>();
             foreach (Param.Row row in _gestureParam.Rows)
             {
-                int itemId = _gestureParam.Pointer.ReadInt32(row.DataOffset + row["itemId"].FieldOffset);
+                int itemId = _gestureParam.Pointer.ReadInt32((int)row.DataOffset + row["itemId"].FieldOffset);
                 string? name = _msgRepository.GetEntry(FmgId.GoodsName, itemId);
                 if (name == null)
                 {

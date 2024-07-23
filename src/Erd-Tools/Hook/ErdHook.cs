@@ -56,7 +56,7 @@ namespace Erd_Tools
         private PHPointer HeldNormalItemsPtr { get; set; }
         private PHPointer HeldSpecialItemsPtr { get; set; }
         private PHPointer SoloParamRepositoryPtr { get; set; }
-        private PHPointer SoloParamRepository { get; set; }
+        public PHPointer SoloParamRepository { get; set; }
         private PHPointer CapParamCall { get; set; }
         public PHPointer ItemGive { get; set; }
         private PHPointer RemoveItemFunction { get; set; } 
@@ -1208,7 +1208,7 @@ namespace Erd_Tools
             foreach (Param.Row row in BonfireWarpTabParam.Rows)
             {
                 DlcName dlc = DlcName.None;
-                int textId = BonfireWarpTabParam.Pointer.ReadInt32(row.DataOffset + row["textId"].FieldOffset);
+                int textId = BonfireWarpTabParam.Pointer.ReadInt32((int)row.DataOffset + row["textId"].FieldOffset);
                 string? name = MsgRepository.GetEntry(FmgId.GR_MenuText, textId);
                 if (name == null)
                 {
@@ -1226,8 +1226,8 @@ namespace Erd_Tools
             {
                 DlcName dlc = DlcName.None;
                 ushort tabId =
-                    BonfireWarpSubCategoryParam.Pointer.ReadUInt16(row.DataOffset + row["tabId"].FieldOffset);
-                int textId = BonfireWarpSubCategoryParam.Pointer.ReadInt32(row.DataOffset + row["textId"].FieldOffset);
+                    BonfireWarpSubCategoryParam.Pointer.ReadUInt16((int)row.DataOffset + row["tabId"].FieldOffset);
+                int textId = BonfireWarpSubCategoryParam.Pointer.ReadInt32((int)row.DataOffset + row["textId"].FieldOffset);
                 string? name = MsgRepository.GetEntry(FmgId.GR_MenuText, textId);
                 if (name == null)
                 {
@@ -1246,12 +1246,12 @@ namespace Erd_Tools
             {
                 DlcName dlc = DlcName.None;
                 int eventFlagId =
-                    (int)BonfireWarpParam.Pointer.ReadUInt32(row.DataOffset + row["eventflagId"].FieldOffset);
+                    (int)BonfireWarpParam.Pointer.ReadUInt32((int)row.DataOffset + row["eventflagId"].FieldOffset);
                 int entityId =
-                    (int)BonfireWarpParam.Pointer.ReadUInt32(row.DataOffset + row["bonfireEntityId"].FieldOffset);
+                    (int)BonfireWarpParam.Pointer.ReadUInt32((int)row.DataOffset + row["bonfireEntityId"].FieldOffset);
                 int subCategoryId =
-                    BonfireWarpParam.Pointer.ReadInt32(row.DataOffset + row["bonfireSubCategoryId"].FieldOffset);
-                int textId = BonfireWarpParam.Pointer.ReadInt32(row.DataOffset + row["textId1"].FieldOffset);
+                    BonfireWarpParam.Pointer.ReadInt32((int)row.DataOffset + row["bonfireSubCategoryId"].FieldOffset);
+                int textId = BonfireWarpParam.Pointer.ReadInt32((int)row.DataOffset + row["textId1"].FieldOffset);
                 string name = MsgRepository.GetEntry(FmgId.PlaceName, textId);
                 if (name == null)
                 {
