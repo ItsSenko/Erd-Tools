@@ -1,6 +1,6 @@
 [submodule "src/PropertyHook"]
 	path = src/PropertyHook
-	url = https://github.com/Nordgaren/PropertyHook.git
+	url = https://github.com/ItsSenko/PropertyHook.git
 	branch = Original
 [submodule "src/SoulsFormats"]
 	path = src/SoulsFormats
