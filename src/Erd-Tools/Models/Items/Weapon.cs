@@ -60,6 +60,10 @@ namespace Erd_Tools.Models
             SmallShield = 65, //ShieldSmall
             MediumShield = 67, //ShieldNormal
             Greatshield = 69, //SheildLarge
+            Arrow = 81,
+            GreatArrow = 83,
+            Bolt = 85,
+            Greatbolt = 86,
             Torch = 87,//Torch
             HandToHand = 88,
             PerfumeBottles = 89,
