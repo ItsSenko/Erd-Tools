@@ -83,6 +83,14 @@ namespace Erd_Tools.Models
             Bolt = 85,
             BallistaBolt = 86
         }
+
+        public enum GemMountType
+        {
+            None = 0,
+            Restricted = 1,
+            Any = 2
+        }
+
         public int RealID { get; set; }
         public bool Unique { get; set; }
         public int SwordArtId { get; set; }
@@ -91,6 +99,7 @@ namespace Erd_Tools.Models
         public WeaponType Type { get; set; }
         public AmmoType TypeAmmo { get; set; }
         public Gem DefaultGem { get; set; }
+        public GemMountType GemAttachType { get; set; }
 
         public Weapon(Weapon source) : base(source) {
             RealID = source.RealID;
@@ -144,6 +153,8 @@ namespace Erd_Tools.Models
             }
             
             IconID = BitConverter.ToInt16(param.Bytes, param.OffsetDict[ID] + (int)Offsets.EquipParamWeapon.IconID);
+
+            GemAttachType = (GemMountType)param.Bytes[param.OffsetDict[ID] + (int)Offsets.EquipParamWeapon.GemMountType];
         }
         
     }

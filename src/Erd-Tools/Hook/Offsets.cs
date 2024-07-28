@@ -122,7 +122,8 @@
             SwordArtsParamId = 0x198,
             WepType = 0x1A6,
             MaxArrowQuantity = 0x235,
-            OriginEquipWep16 = 0x250
+            OriginEquipWep16 = 0x250,
+            GemMountType = 0x241
         }
 
         public const string ItemGiveAoB = "8B 02 83 F8 0A";
