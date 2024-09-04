@@ -108,7 +108,7 @@ namespace Erd_Tools.Models
 
                     if (acc != null)
                     {
-                        Name = hook.EquipParamAccessory.NameDictionary[ItemID];
+                        Name = hook.EquipParamAccessory.NameDictionary[ItemID] ?? acc;
                     }
                     break;
                 case Category.Goods:

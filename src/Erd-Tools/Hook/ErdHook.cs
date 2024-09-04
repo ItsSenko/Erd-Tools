@@ -583,7 +583,7 @@ namespace Erd_Tools
             AsmExecute(asm);
             Free(itemInfo);
 
-            if (item.EventID != -1) SetEventFlag(item.EventID, true);
+            if (item.EventID != -1) CSFD4VirtualMemoryFlag.SetEventFlag(item.EventID, true);
         }
 
         public void GetItem(List<ItemSpawnInfo> items, CancellationToken token)
@@ -641,7 +641,7 @@ namespace Erd_Tools
 
                 foreach (int eventID in eventIDs)
                 {
-                    SetEventFlag(eventID, true);
+                    CSFD4VirtualMemoryFlag.SetEventFlag(eventID, true);
                 }
 
                 token.ThrowIfCancellationRequested();
