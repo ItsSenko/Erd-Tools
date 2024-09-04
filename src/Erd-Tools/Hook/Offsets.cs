@@ -156,9 +156,19 @@
 
         public enum EquipInventoryData
         {
-            InventoryOffset = 0x10,
-            InventoryCount = 0x18,
+            TotalInventoryCap = 0x0,
+            NormalInventory = 0xC,
+            KeyInventory = 0x1C,
+            UnkInventory = 0x2C,
+            Unk2Inventory = 0x3C,
             TailIndex = 0x1C,
+        }
+
+        public enum InventoryItemList
+        {
+            Cap = 0x0,
+            Pointer = 0x4,
+            Entries = 0xC,
         }
 
         public enum InventoryEntry
