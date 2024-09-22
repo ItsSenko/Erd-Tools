@@ -18,7 +18,7 @@
 
         public enum GameMan
         {
-            LastGrace = 0xB30
+            LastGrace = 0xB60
         }
 
         public enum GameDataMan
@@ -266,7 +266,12 @@
             /// <summary>
             /// IntPtr ModuleBase
             /// </summary>
-            ModuleBase = 0x190
+            ModuleBase = 0x190,
+
+            /// <summary>
+            /// PHPointer SpecialEffects
+            /// </summary>
+            SpecialEffects = 0x178
         }
 
         public enum ModuleBase
@@ -377,9 +382,19 @@
             Poison = 0x10,
 
             /// <summary>
+            /// int AddPoison
+            /// </summary>
+            AddPoison = 0x80,
+
+            /// <summary>
             /// int Rot
             /// </summary>
             Rot = 0x14,
+
+            /// <summary>
+            /// int AddRot
+            /// </summary>
+            AddRot = 0x84,
 
             /// <summary>
             /// int Bleed
@@ -387,9 +402,19 @@
             Bleed = 0x18,
 
             /// <summary>
+            /// int AddBleed
+            /// </summary>
+            AddBleed = 0x88,
+
+            /// <summary>
             /// int Blight
             /// </summary>
             Blight = 0x1C,
+
+            /// <summary>
+            /// int AddBlight
+            /// </summary>
+            AddBlight = 0x8C,
 
             /// <summary>
             /// int Frost
@@ -397,14 +422,29 @@
             Frost = 0x20,
 
             /// <summary>
+            /// int AddFrost
+            /// </summary>
+            AddFrost = 0x90,
+
+            /// <summary>
             /// int Sleep
             /// </summary>
             Sleep = 0x24,
 
             /// <summary>
+            /// int AddSleep
+            /// </summary>
+            AddSleep = 0x94,
+
+            /// <summary>
             /// int Madness
             /// </summary>
             Madness = 0x28,
+
+            /// <summary>
+            /// int AddMadness
+            /// </summary>
+            AddMadness = 0x98,
 
             /// <summary>
             /// int PoisonMax
@@ -621,5 +661,7 @@
         public const string ChrDebugFlagsAoB = "80 3D ?? ?? ?? ?? 00 0F 85 ?? ?? ?? ?? 32 C0 48";
         public const string ChrDebugsAoB = "48 8B 05 ?? ?? ?? ?? 41 83 FF 02 ?? ?? 48 85 C0";
 
+        public const string AddSpEffectCallAOB = "0f 28 0d ?? ?? ?? ?? ?? 8d ?? ?? 0f 29 ?? ?? ?? 0f b6 d8";
+        public const string RemoveSpEffectCallAOB = "48 83 EC 28 8B C2 48 8B 51 08 48 85 D2 ?? ?? 90";
     }
 }

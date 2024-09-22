@@ -72,6 +72,8 @@ namespace Erd_Tools
         public MsgRepositoryImp MsgRepository { get; private set; }
         public PHPointer CSFD4VirtualMemoryFlagPtr { get; set; }
         public CSFD4VirtualMemoryFlag CSFD4VirtualMemoryFlag { get; private set; }
+        public PHPointer AddSpEffectCall { get; private set; }
+        public PHPointer RemoveSpEffectCall { get; private set; }
 
         public CSDlcImp CSDlc { get; private set; }
         public static bool Reading { get; set; }
@@ -144,6 +146,9 @@ namespace Erd_Tools
                 Offsets.RelativePtrInstructionSize, 0x0);
 
             LevelUp = RegisterAbsoluteAOB(Offsets.LevelUpAoB);
+
+            AddSpEffectCall = RegisterAbsoluteAOB(Offsets.AddSpEffectCallAOB);
+            RemoveSpEffectCall = RegisterAbsoluteAOB(Offsets.RemoveSpEffectCallAOB);
 
             ItemEventDictionary = BuildItemEventDictionary();
             ItemCategory.GetItemCategories();

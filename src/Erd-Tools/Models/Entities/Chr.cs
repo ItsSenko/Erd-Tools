@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Erd_Tools.Utils;
 using PropertyHook;
 
 namespace Erd_Tools.Models
@@ -19,6 +20,7 @@ namespace Erd_Tools.Models
             _chrResistance = _hook.CreateChildPointer(_chrModuleBase, (int)Offsets.ModuleBase.ResistanceData);
             _chrStagger = _hook.CreateChildPointer(_chrModuleBase,(int)Offsets.ModuleBase.StaggerData);
             _chrActionRequest = _hook.CreateChildPointer(_chrModuleBase,(int)Offsets.ModuleBase.ActionRequest);
+            _chrSpecialEffects = hook.CreateChildPointer(_chrIns, (int)Offsets.EnemyIns.SpecialEffects);
         }
         private PHPointer _chrIns { get; }
 
@@ -30,6 +32,9 @@ namespace Erd_Tools.Models
         private PHPointer _chrResistance;
         private PHPointer _chrStagger;
         private PHPointer _chrActionRequest;
+        private PHPointer _chrSpecialEffects;
+
+        public PHPointer Instance => _chrIns;
 
         public long Handle => _chrIns.ReadInt64((int)Offsets.EnemyIns.EnemyHandle);
 
@@ -76,19 +81,47 @@ namespace Erd_Tools.Models
         #endregion
 
         #region Resistence
-        public int Poison => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Poison);
+        public int Poison
+        {
+            get => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Poison);
+            set => _chrResistance.WriteInt32((int)Offsets.ResistenceData.Poison, value);
+        }
         public int PoisonMax => _chrResistance.ReadInt32((int)Offsets.ResistenceData.PoisonMax);
-        public int Rot => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Rot);
+        public int Rot
+        {
+            get => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Rot);
+            set => _chrResistance.WriteInt32((int)Offsets.ResistenceData.Rot, value);
+        }
         public int RotMax => _chrResistance.ReadInt32((int)Offsets.ResistenceData.RotMax);
-        public int Bleed => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Bleed);
+        public int Bleed
+        {
+            get => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Bleed);
+            set => _chrResistance.WriteInt32((int)Offsets.ResistenceData.Bleed, value);
+        }
         public int BleedMax => _chrResistance.ReadInt32((int)Offsets.ResistenceData.BleedMax);
-        public int Frost => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Frost);
+        public int Frost
+        {
+            get => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Frost);
+            set => _chrResistance.WriteInt32((int)Offsets.ResistenceData.Frost, value);
+        } 
         public int FrostMax => _chrResistance.ReadInt32((int)Offsets.ResistenceData.FrostMax);
-        public int Blight => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Blight);
+        public int Blight
+        {
+            get => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Blight);
+            set => _chrResistance.WriteInt32((int)Offsets.ResistenceData.Blight, value);
+        }
         public int BlightMax => _chrResistance.ReadInt32((int)Offsets.ResistenceData.BlightMax);
-        public int Sleep => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Sleep);
+        public int Sleep
+        {
+            get => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Sleep);
+            set => _chrResistance.WriteInt32((int)Offsets.ResistenceData.Sleep, value);
+        }
         public int SleepMax => _chrResistance.ReadInt32((int)Offsets.ResistenceData.SleepMax);
-        public int Madness => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Madness);
+        public int Madness
+        {
+            get => _chrResistance.ReadInt32((int)Offsets.ResistenceData.Madness);
+            set => _chrResistance.WriteInt32((int)Offsets.ResistenceData.Madness, value);
+        }
         public int MadnessMax => _chrResistance.ReadInt32((int)Offsets.ResistenceData.MadnessMax);
         #endregion
 
@@ -100,6 +133,24 @@ namespace Erd_Tools.Models
 
         #region ActionRequest
         public int CurrentAnimation => _chrActionRequest.ReadInt32((int)Offsets.ActionRequest.CurrentAnimation);
+        #endregion
+
+        #region Special Effects
+        public void AddSpecialEffect(int ID)
+        {
+            string asm = Util.GetEmbededResource("Assembly.AddSpEffect.asm");
+            string formatted = string.Format(asm, _chrIns.Resolve(), ID, _hook.AddSpEffectCall.Resolve().ToInt64() - 0x1D);
+
+            _hook.AsmExecute(formatted);
+        }
+
+        public void RemoveSpecialEffect(int ID)
+        {
+            string asm = Util.GetEmbededResource("Assembly.RemoveSpEffect.asm");
+            string formatted = string.Format(asm, _chrSpecialEffects.Resolve(), ID, _hook.RemoveSpEffectCall.Resolve());
+
+            _hook.AsmExecute(formatted);
+        }
         #endregion
     }
 }

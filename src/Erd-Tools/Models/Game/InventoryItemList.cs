@@ -35,21 +35,26 @@ namespace Erd_Tools.Models.Game
         
         public List<InventoryEntry> GetInventoryList()
         {
-            byte[] bytes = _inventory.ReadBytes(0x0, Cap * Offsets.InventoryEntrySize);
-            List<InventoryEntry> inventory = new();
-            for (int i = 0; inventory.Count < Entries; i++)
+            try
             {
-                byte[] entry = new byte[Offsets.InventoryEntrySize];
-                Array.Copy(bytes, i * Offsets.InventoryEntrySize, entry, 0, entry.Length);
+                byte[] bytes = _inventory.ReadBytes(0x0, Cap * Offsets.InventoryEntrySize);
+                List<InventoryEntry> inventory = new();
+                for (int i = 0; inventory.Count < Entries; i++)
+                {
+                    byte[] entry = new byte[Offsets.InventoryEntrySize];
+                    Array.Copy(bytes, i * Offsets.InventoryEntrySize, entry, 0, entry.Length);
 
-                if (BitConverter.ToInt32(entry, (int)Offsets.InventoryEntry.ItemID) == -1) continue;
+                    if (BitConverter.ToInt32(entry, (int)Offsets.InventoryEntry.ItemID) == -1) continue;
 
-                inventory.Add(new InventoryEntry(
-                    _hook.CreateBasePointer(_inventory.Resolve() + i * Offsets.InventoryEntrySize), (uint)i, _hook)
-                );
+                    inventory.Add(new InventoryEntry(
+                        _hook.CreateBasePointer(_inventory.Resolve() + i * Offsets.InventoryEntrySize), (uint)i, _hook)
+                    );
+                }
+            
+                return inventory;
             }
-
-            return inventory;
+            catch { }
+            return null;
         }
     }
 }
