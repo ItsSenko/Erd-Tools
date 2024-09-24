@@ -32,7 +32,7 @@ namespace Erd_Tools.Models
         private PHPointer _chrResistance;
         private PHPointer _chrStagger;
         private PHPointer _chrActionRequest;
-        private PHPointer _chrSpecialEffects;
+        public PHPointer _chrSpecialEffects;
 
         public PHPointer Instance => _chrIns;
 
