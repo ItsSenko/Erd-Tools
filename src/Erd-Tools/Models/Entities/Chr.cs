@@ -21,6 +21,7 @@ namespace Erd_Tools.Models
             _chrStagger = _hook.CreateChildPointer(_chrModuleBase,(int)Offsets.ModuleBase.StaggerData);
             _chrActionRequest = _hook.CreateChildPointer(_chrModuleBase,(int)Offsets.ModuleBase.ActionRequest);
             _chrSpecialEffects = hook.CreateChildPointer(_chrIns, (int)Offsets.EnemyIns.SpecialEffects);
+            _chrToughnessData = hook.CreateChildPointer(_chrModuleBase, 0x48);
         }
         private PHPointer _chrIns { get; }
 
@@ -33,6 +34,7 @@ namespace Erd_Tools.Models
         private PHPointer _chrStagger;
         private PHPointer _chrActionRequest;
         public PHPointer _chrSpecialEffects;
+        private PHPointer _chrToughnessData;
 
         public PHPointer Instance => _chrIns;
 
@@ -126,9 +128,32 @@ namespace Erd_Tools.Models
         #endregion
 
         #region Stagger
-        public float Stagger => _chrStagger.ReadSingle((int)Offsets.StaggerData.Stagger);
+        public float Stagger 
+        { 
+            get => _chrStagger.ReadSingle((int)Offsets.StaggerData.Stagger);
+            set => _chrStagger.WriteSingle((int)Offsets.StaggerData.Stagger, value);
+        } 
         public float StaggerMax => _chrStagger.ReadSingle((int)Offsets.StaggerData.StaggerMax);
-        public float ResetTime => _chrStagger.ReadSingle((int)Offsets.StaggerData.ResetTime);
+        public float ResetTime
+        {
+            get => _chrStagger.ReadSingle((int)Offsets.StaggerData.ResetTime);
+            set => _chrStagger.WriteSingle((int)Offsets.StaggerData.ResetTime, value);
+        }
+        #endregion
+
+        #region Toughness
+        public float Toughness
+        {
+            get => _chrToughnessData.ReadSingle(0x10);
+            set => _chrToughnessData.WriteSingle(0x10, value);
+        }
+        public float ToughnessMax => _chrToughnessData.ReadSingle(0x18);
+        public float RecoverTime
+        {
+            get => _chrToughnessData.ReadSingle(0x20);
+            set => _chrToughnessData.WriteSingle(0x20, value);
+        }
+
         #endregion
 
         #region ActionRequest
